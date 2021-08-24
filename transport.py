@@ -1,6 +1,8 @@
 from time import monotonic
-from signal import signal, register
 
+
+def signal(*args, **kwargs):
+    pass
 
 class Transport:
     def __init__(self, bpm=120, tpqn=480):

@@ -1,180 +1,193 @@
-import re
+
+VALID_EVENT_CODES = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '
+VALID_KEYWORD_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ&%$#@*+=~?'
+DIGITS_ALL = '1234567890'
+DIGITS_NONZERO = '123456789'
 
 
-class Parser:
-    def __init__(self):
-        self.tokens = None
-        self.current_state = None
-        self.events = None
+class ParserString:
+    def __init__(self, input_string):
+        self._input_string = input_string
+        self._remaining = list(input_string) + ['<END>']
 
-    def parse(self, sequence_string):
-        self.tokens = self.tokenize(sequence_string)
-        self.current_state = PSReadEvents(self)
-        self.events = []
+    @property
+    def input_string(self):
+        return self._input_string
 
-        while len(self.tokens) > 0:
-            self.current_state.handle_token(self)
+    @property
+    def remaining(self):
+        return ''.join(self._remaining[:-1])
 
-        return self.events
+    def __len__(self):
+        return len(self._remaining) - 1
 
-    def change_state(self, next_state, *args, **kwargs):
-        self.current_state.on_exit(self)
-        self.current_state = next_state(self, *args, **kwargs)
+    def peek(self):
+        return self._remaining[0]
 
-    def get_current_token(self):
-        if self.tokens:
-            return self.tokens[0]
-        else:
+    def consume(self):
+        char = self._remaining.pop(0)
+        return char
+
+
+def parse_char(inp, valid_chars):
+    if inp.peek() in valid_chars:
+        return inp.consume()
+    else:
+        return ''
+
+
+def parse_chars(inp, valid_chars):
+    out = ''
+    while inp.peek() in valid_chars:
+        out += inp.consume()
+    return out
+
+
+def parse_number(inp):
+    if inp.peek() == "<END>":
+        return None
+
+    out = ''
+
+    # parse negative sign
+    out += parse_char(inp, '-')
+
+    # parse first digit
+    first_digit = parse_char(inp, DIGITS_ALL)
+    out += first_digit
+
+    if first_digit == '':
+        if out == '':
             return None
-
-    def lookahead(self, amount=1):
-        if amount < len(self.tokens):
-            return self.tokens[amount]
         else:
-            return None
+            raise SyntaxError(f"Invalid first digit: {inp.remaining}")
 
-    def advance(self):
-        self.tokens.pop(0)
+    elif first_digit == '0':
+        point = parse_char(inp, '.')
 
-    def get_current_event(self):
-        return self.events[-1]
+        if point == '.':
+            out += point
 
-    @staticmethod
-    def tokenize(input_str):
-        input_str = list(input_str)
-        tokens = []
-        current = []
-
-        in_parentheses = False
-        while len(input_str) > 0:
-            char = input_str.pop(0)
-            if not in_parentheses:
-                if re.match("[a-zA-Z ]", char) is not None:
-                    tokens.append(("EVENT", char))
-                elif char == "(":
-                    tokens.append(("PUNC", char))
-                    in_parentheses = True
-                else:
-                    raise SyntaxError(f"Invalid character: {char}")
-            else:
-                if re.match(r"[-\w~!@$%^&*. ]", char) is not None:
-                    current.append(char)
-                elif char == ":":
-                    key = Parser._format_key("".join(current))
-                    tokens.append(("KEY", key))
-                    current = []
-                    tokens.append(("PUNC", char))
-                elif char == ",":
-                    val = Parser._format_val("".join(current))
-                    tokens.append(("VAL", val))
-                    current = []
-                    tokens.append(("PUNC", char))
-                elif char == ")":
-                    val = float("".join(current).strip(" "))
-                    tokens.append(("VAL", val))
-                    current = []
-                    tokens.append(("PUNC", char))
-                    in_parentheses = False
-                else:
-                    raise SyntaxError(f"Invalid character: {char}")
-        return tokens
-
-    @staticmethod
-    def _format_key(key_str):
-        key = key_str.strip(" ")
-        if re.match(r"^[a-zA-Z~!@$%&*][\w~!@$%&*]*$", key) is not None:
-            return key
+            # parse digits after '.'
+            out += parse_chars(inp, DIGITS_ALL)
         else:
-            raise SyntaxError("Parameter keys must not start with numbers or certain characters. Must contain no spaces. Format: ^[a-zA-Z~!@$%&*][\w~!@$%&*]*$")
+            raise SyntaxError(f"Leading zeros not allowed: {out + inp.remaining}")
 
-    @staticmethod
-    def _format_val(val_str):
-        val = float(val_str.strip(" ").rstrip("."))
-        return val
+    else: # if first digit is 1-9
+        # parse other digits before '.'
+        out += parse_chars(inp, DIGITS_ALL)
 
+        point = parse_char(inp, '.')
 
-class ParserState:
-    def __init__(self, parser, *args, **kwargs):
-        self.initialize(*args, **kwargs)
-        self.on_enter(parser)
+        if point == '.':
+            out += point
 
-    def initialize(self, *args, **kwargs):
-        pass
+            # parse digits after '.'
+            out += parse_chars(inp, DIGITS_ALL)
 
-    def on_enter(self, parser):
-        pass
-
-    def on_exit(self, parser):
-        pass
-
-    def handle_token(self, parser):
-        pass
+    if out:
+        return float(out)
+    else:
+        return None
 
 
-class PSReadEvents(ParserState):
-    def handle_token(self, parser):
-        t_type, t_value = token = parser.get_current_token()
-        if t_type == 'EVENT':
-            parser.events.append({"code": t_value})
-            parser.advance()
-        elif t_value == '(' and parser.lookahead()[0] == 'VAL':
-            parser.change_state(PSReadArgs)
-            parser.advance()
-        elif t_value == '(' and parser.lookahead()[0] == 'KEY':
-            parser.change_state(PSReadKwargs)
-            parser.advance()
+def parse_comma_sep(inp):
+    comma = parse_char(inp, ',')
+    whitespace = parse_chars(inp, ' ')
+
+
+def parse_args(inp):
+    out = []
+    while True:
+        num = parse_number(inp)
+        if num is None:
+            return out
         else:
-            raise SyntaxError(f"Unexpected token: {token}")
+            out.append(num)
+            parse_comma_sep(inp)
 
 
-class PSReadArgs(ParserState):
-    def on_enter(self, parser):
-        parser.get_current_event()["args"] = []
-
-    def handle_token(self, parser):
-        t_type, t_value = token = parser.get_current_token()
-        if t_type == 'VAL':
-            parser.get_current_event()["args"].append(t_value)
-            parser.advance()
-        elif t_value == ',' and parser.lookahead()[0] == 'VAL':
-            parser.advance()
-        elif t_value == ',' and parser.lookahead()[0] == 'KEY':
-            parser.change_state(PSReadKwargs)
-            parser.advance()
-        elif t_value == ')':
-            parser.change_state(PSReadEvents)
-            parser.advance()
+def parse_kwargs(inp):
+    out = {}
+    while True:
+        result = parse_kwarg(inp)
+        if result is None:
+            return out
         else:
-            raise SyntaxError(f"Unexpected token: {token}")
+            key, value = result
+            out[key] = value
+            parse_comma_sep(inp)
 
 
-class PSReadKwargs(ParserState):
-    def on_enter(self, parser):
-        parser.get_current_event()["kwargs"] = {}
+def parse_kwarg(inp):
+    key = parse_keyword(inp)
 
-    def handle_token(self, parser):
-        t_type, t_value = token = parser.get_current_token()
-        if t_type == 'KEY' and parser.lookahead(1)[1] == ':' and parser.lookahead(2)[0] == 'VAL':
-            parser.get_current_event()["kwargs"][t_value] = parser.lookahead(2)[1]
-            parser.advance()
-            parser.advance()
-            parser.advance()
-        elif t_value == ',' and parser.lookahead()[0] == 'KEY':
-            parser.advance()
-        elif t_value == ')':
-            parser.change_state(PSReadEvents)
-            parser.advance()
+    if not key:
+        return None
+
+    colon = parse_char(inp, ':')
+
+    if not colon:
+        raise SyntaxError(f"Kwargs must have ':' :{inp.remaining}")
+
+    value = parse_number(inp)
+
+    if not value:
+        raise SyntaxError(f"Kwargs must have a value after the ':' :{inp.remaining}")
+
+    return key, value
+
+
+def parse_keyword(inp):
+    out = ''
+    out += parse_chars(inp, VALID_KEYWORD_CHARS)
+    return out
+
+
+def parse_parameters(inp):
+    args = []
+    kwargs = {}
+
+    open_paren = parse_char(inp, '(')
+
+    if open_paren:
+        args = parse_args(inp)
+        kwargs = parse_kwargs(inp)
+        close_paren = parse_char(inp, ')')
+        if close_paren:
+            return args, kwargs
         else:
-            raise SyntaxError(f"Unexpected token: {token}")
+            raise SyntaxError(f"Unclosed parameters! {inp.remaining}")
+    else:
+        return args, kwargs
 
 
-def parse(input_str):
-    events = Parser().parse(input_str)
-    return events
+def parse_event(inp):
+    code = ''
+    args = []
+    kwargs = {}
+
+    code = parse_char(inp, VALID_EVENT_CODES + '<END>')
+    if code == '<END>':
+        return None
+    elif code == '':
+        raise SyntaxError(f"Invalid event code: {inp.remaining}")
+
+    args, kwargs = parse_parameters(inp)
+
+    return code, args, kwargs
 
 
-if __name__ == '__main__':
-    test_str = "skk(-10.100, 20, j:33) k(55, 22, %bab:505, v:100)s"
-    e = parse(test_str)
-    for i in e:
-        print(i)
+def parse_sequence(inp):
+    events = []
+    while True:
+        event = parse_event(inp)
+        if event is None:
+            return events
+        else:
+            events.append(event)
+
+
+def parse(input_string):
+    ps = ParserString(input_string)
+    return parse_sequence(ps)
