@@ -1,9 +1,6 @@
 from time import monotonic
 
 
-def signal(*args, **kwargs):
-    pass
-
 class Transport:
     def __init__(self, bpm=120, tpqn=480):
         self.bpm = bpm
@@ -14,14 +11,12 @@ class Transport:
         self.__elapsed_time_s = 0
 
     def start(self):
-        signal("transport.start", "SIGNAL: transport started @", self.get_elapsed_ticks())
         self.__start_time_s = monotonic()
         self.__running = True
 
     def stop(self):
         self.__elapsed_time_s += monotonic() - self.__start_time_s
         self.__running = False
-        signal("transport.stop", "SIGNAL: transport stopped @", self.get_elapsed_ticks())
 
     def get_elapsed_ticks(self):
         return self.convert_seconds_to_ticks(self.get_elapsed_s())
@@ -50,9 +45,6 @@ class Transport:
 
 if __name__ == '__main__':
     from time import sleep
-
-    register("transport.start", print)
-    register("transport.stop", print)
 
     t = Transport()
     print("BEFORE interval 1")

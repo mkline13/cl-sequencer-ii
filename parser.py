@@ -189,5 +189,5 @@ def parse_sequence(inp):
 
 
 def parse(input_string):
-    ps = ParserString(input_string)
-    return parse_sequence(ps)
+    inp = ParserString(input_string)
+    return parse_sequence(inp)

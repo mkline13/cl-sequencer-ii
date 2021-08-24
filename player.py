@@ -1,63 +1,69 @@
 import transport, midi
 
-t = transport.Transport(bpm=120, tpqn=480)
-sequences = []
-running = False
 
+class Player:
+    midi_map = {
+        "k": 36,
+        "s": 39,
+        "h": 42,
+    }
 
-midi_map = {
-    "k": 36,
-    "s": 39,
-    "h": 42,
-}
+    def __init__(self, app):
+        self.app = app
+        self.transport = transport.Transport(bpm=120, tpqn=480)
+        self.sequences = []
 
+        self.running = False
 
-def play():
-    global running
+    def play(self):
+        # setup
+        current_time = self.transport.get_elapsed_ticks()
 
-    # setup
-    current_time = t.get_elapsed_ticks()
-    for s in sequences:
-        s.calc_all_playback_times(current_time)
+        # precalculate timing and anything else for upcoming events
+        for seq in self.sequences:
+            seq.calculate_playback_times(current_time)
 
-    # playback loop
-    running = True
-    t.start()
-    while running:
-        current_time = t.get_elapsed_ticks()
+        # playback loop
+        self.running = True
+        self.transport.start()
 
-        current_events = []
+        while self.running:
+            current_time = self.transport.get_elapsed_ticks()
 
-        for s in sequences:
-            for e in s.get_current_events(current_time):
-                current_events.append(e)
+            current_events = []
 
-        for e in current_events:
-            play_event(e)
+            # retrieve current events from all sequences
+            for seq in self.sequences:
+                current_events += seq.get_current_events(current_time)
 
-        for s in sequences:
-            s.recalc_played_events(current_time)
+            # execute the events
+            for event in current_events:
+                self.exec_event(event)
 
-        if t.get_elapsed_ticks() > 10000:
-            stop()
+            # this is where items in the temporary scheduler will be executed
 
+            # then maybe execute low-priority functionality of events (such as scheduling note-offs)
 
-def stop():
-    global running
-    running = False
+            # calculate timing for next occurrence of played events
+            # other precalcs will be done here as well
+            for event in current_events:
+                event.calc_next_playback_time(current_time)
 
+            if self.transport.get_elapsed_ticks() > 10000:
+                self.stop()
 
-def play_event(event):
-    if event.code in midi_map.keys():
-        midi.note_on(midi_map[event.code], 127, 1)
-    #print("PLAYING", event)
+    def stop(self):
+        self.transport.stop()
+        self.running = False
+
+    def exec_event(self, event):
+        if event.code in self.midi_map.keys():
+            midi.note_on(self.midi_map[event.code], 127, 1)
 
 
 if __name__ == '__main__':
     import sequence
-    sequences.append(sequence.Sequence.new_from_string("ksks", t.tpqn))
-    sequences.append(sequence.Sequence.new_from_string("h", t.tpqn / 5))
-    sequences.append(sequence.Sequence.new_from_string("   k", t.tpqn / 5))
-    for s in sequences:
-        print("SEQ>>>", s.input_string, '    grid:', s.tpb)
-    play()
+    p = Player(None)
+    p.sequences.append(sequence.Sequence("kkskkk s", p.transport.tpqn / 2))
+    p.sequences.append(sequence.Sequence("h", p.transport.tpqn / 4))
+    p.play()
