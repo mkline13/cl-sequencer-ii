@@ -1,93 +1,166 @@
-import transport
-import event_handlers
-import scheduler
+from sequence import Sequence
+from transport import Transport
+import output
+
+
+class EventDispatch:
+    def __init__(self):
+        self.mapping = {
+            "k": self.kick,
+            "b": self.block,
+            "s": self.snare,
+            "h": self.hat,
+            ".": self.rest,
+            "w": self.print,
+        }
+
+    def dispatch(self, event):
+        self.mapping[event.code](event)
+
+    def rest(self, event):
+        pass
+
+    def kick(self, event):
+        # defaults
+        params = {
+            "vel": 100,
+            "rvel": 0,
+            "prob": 1
+        }
+
+        # ordered args
+        for param_name, arg in zip(["vel", "rvel", "prob"], event.args):
+            params[param_name] = arg
+
+        # kwargs
+        params.update(event.kwargs)
+
+        # send output
+        output.drum(36, params["vel"], params["rvel"], params["prob"], 1)
+
+    def snare(self, event):
+        # defaults
+        params = {
+            "vel": 100,
+            "rvel": 0,
+            "prob": 1
+        }
+
+        # ordered args
+        for param_name, arg in zip(["vel", "rvel", "prob"], event.args):
+            params[param_name] = arg
+
+        # kwargs
+        params.update(event.kwargs)
+
+        # send output
+        output.drum(38, params["vel"], params["rvel"], params["prob"], 1)
+
+    def hat(self, event):
+        # defaults
+        params = {
+            "vel": 100,
+            "rvel": 0,
+            "prob": 1
+        }
+
+        # ordered args
+        for param_name, arg in zip(["vel", "rvel", "prob"], event.args):
+            params[param_name] = arg
+
+        # kwargs
+        params.update(event.kwargs)
+
+        # send output
+        output.drum(42, params["vel"], params["rvel"], params["prob"], 1)
+
+    def block(self, event):
+        # defaults
+        params = {
+            "vel": 100,
+            "rvel": 50,
+            "prob": 0.5
+        }
+
+        # ordered args
+        for param_name, arg in zip(["vel", "rvel", "prob"], event.args):
+            params[param_name] = arg
+
+        # kwargs
+        params.update(event.kwargs)
+
+        # send output
+        output.drum(37, params["vel"], params["rvel"], params["prob"], 1)
+
+    def print(self, event):
+        print("PLAYING:", event.code)
 
 
 class Player:
-    event_code_map = {
-        "k": event_handlers.DrumEventHandler(36, 127, 0, 30),
-        "s": event_handlers.DrumEventHandler(39, 127, 0, 30),
-        "h": event_handlers.DrumVelCycleEventHandler(42, [20, 60, 100, 127], 1, 30),
-    }
+    def __init__(self):
+        self.dispatch = EventDispatch()
+        self.transport = Transport(bpm=120, tpqn=480)
+        self.__sequences = []
+        self.__running = False
 
-    def __init__(self, app):
-        self.app = app
-        self.transport = transport.Transport(bpm=120, tpqn=480)
-        self.sequences = []
-
-        self.running = False
+    def add_sequence(self, sequence):
+        self.__sequences.append(sequence)
 
     def play(self):
-        # setup
-        current_time = self.transport.get_elapsed_ticks()
+        for s in self.__sequences:
+            s.print()
 
-        # precalculate timing and anything else for upcoming events
-        for seq in self.sequences:
-            seq.calculate_playback_times(current_time)
+        previous_time = -10
 
-        # playback loop
-        self.running = True
+        # prevents playing the same note more than once at a time
+        played = set()
+
+        self.__running = True
+        print("player running...")
+
         self.transport.start()
 
-        while self.running:
+        while self.__running:
             current_time = self.transport.get_elapsed_ticks()
 
-            current_events = []
+            for sequence in self.__sequences:
+                # calculate event collision range
+                collision_interval = current_time - previous_time
+                low = previous_time % sequence.length
+                high = low + collision_interval
 
-            # retrieve current events from all sequences
-            for seq in self.sequences:
-                current_events += seq.get_current_events(current_time)
+                # print("check", current_time, low, high)
 
-            # execute the events' high priority functions
-            for event in current_events:
-                self.exec_high_priority(event)
+                for event in sequence.events:
+                    if event.play_time > high:
+                        continue
+                    elif event.code in played:
+                        continue
+                    elif low < event.play_time or low - sequence.length < event.play_time <= high - sequence.length:
+                        # handle normal notes OR notes that occur when the loop cycles back to the beginning
+                        self.dispatch.dispatch(event)
+                        played.add(event.code) # mark the note as played so that it isn't played again this time
+                        # print("BLAMO", current_time, event.code)
 
-            # this is where items in the temporary scheduler will be executed
-            scheduler.play_current_events(current_time)
+            previous_time = current_time
+            played.clear()
 
-            # execute the events' low priority functions
-            for event in current_events:
-                self.exec_low_priority(event)
+            ## AUTO STOP FOR TESTING
+            # if current_time > 2000: self.stop()
 
-
-            # calculate timing for next occurrence of played events
-            # other precalcs will be done here as well
-            # for event in current_events:
-            #     event.calc_next_playback_time(current_time)
-
-            for event in current_events:
-                self.exec_precalcs(event, current_time)
-
-            # if self.transport.get_elapsed_ticks() > 10000:
-            #     self.stop()
+        print("stopped...")
 
     def stop(self):
         self.transport.stop()
-        self.running = False
-        scheduler.flush_events()
-
-    def exec_high_priority(self, event):
-        if event.code in self.event_code_map:
-            self.event_code_map[event.code].high_priority(event)
-
-    def exec_low_priority(self, event):
-        if event.code in self.event_code_map:
-            self.event_code_map[event.code].low_priority(event)
-
-    def exec_precalcs(self, event, current_time):
-        if event.code in self.event_code_map:
-            self.event_code_map[event.code].pre_calc(event, current_time)
+        self.__running = False
 
 
 if __name__ == '__main__':
-    import sequence
-    p = Player(None)
-    # p.sequences.append(sequence.Sequence("kkskkk.s", p.transport.tpqn))
-    # p.sequences.append(sequence.Sequence("k....", p.transport.tpqn / 4))
-    # p.sequences.append(sequence.Sequence("h", p.transport.tpqn / 4))
-
-    p.sequences.append(sequence.Sequence("k", p.transport.tpqn))
-    p.sequences.append(sequence.Sequence("k....", p.transport.tpqn / 4))
-    p.sequences.append(sequence.Sequence(".s", p.transport.tpqn))
-    p.sequences.append(sequence.Sequence(".hhh", p.transport.tpqn / 4))
+    tpqn = 480
+    p = Player()
+    p.add_sequence(Sequence("k", tpqn))
+    p.add_sequence(Sequence(".s", tpqn))
+    p.add_sequence(Sequence(".k(90, 80).", tpqn / 4))
+    p.add_sequence(Sequence(".h(50)h(50)h(50)", tpqn / 4))
+    p.add_sequence(Sequence("b..", tpqn / 4))
     p.play()

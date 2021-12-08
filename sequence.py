@@ -1,71 +1,55 @@
 from parser import parse
-import bisect
 
 
-class Sequence:
-    def __init__(self, input_string, ticks_per_beat):
-        self.input_string = input_string
-        self.tpb = ticks_per_beat
-        self.length = 0
-
-        self.events = []
-        self.generate_events(self.input_string, self.tpb)
-
-    def generate_events(self, input_string, ticks_per_beat):
-        raw_events = parse(input_string)
-
-        # calculate in-loop playback time for all events
-        for i, event in enumerate(raw_events):
-            code, args, kwargs = event
-            playback_time = i * ticks_per_beat
-            new_event = SequenceEvent(self, code, args, kwargs, i, playback_time)
-
-            self.events.append(new_event)
-
-        self.length = len(self.events) * self.tpb
-        self.calculate_playback_times(-1)
-
-    def calculate_playback_times(self, current_time):
-        for event in self.events:
-            event.calc_next_playback_time(current_time)
-
-    def get_current_events(self, current_time):
-        return [event for event in self.events if current_time >= event.next_playback_time]
-
-    def print_events(self):
-        for event in self.events:
-            print(event)
-
-
-class SequenceEvent:
-    def __init__(self, sequence, code, args, kwargs, index, playback_time):
-        self.sequence = sequence
-
+class SEvent:
+    def __init__(self, code, args, kwargs, time):
+        # How to play
         self.code = code
         self.args = args
         self.kwargs = kwargs
 
-        self._index = index
-        self._loop_playback_time = playback_time
+        # When to play
+        self.time = time
+        self.offset = 0
 
-        self.modified_loop_playback_time = playback_time
-        self.next_playback_time = self.modified_loop_playback_time
+    @property
+    def play_time(self):
+        return self.time + self.offset
 
-    def calc_next_playback_time(self, current_time):
-        if current_time > self.next_playback_time:
-            next_repeat_start_time = (current_time // self.sequence.length + 1) * self.sequence.length
-            self.next_playback_time = next_repeat_start_time + self.modified_loop_playback_time
 
-    def __str__(self):
-        return str((self.code, self.args, self.kwargs, self.next_playback_time))
+class Sequence:
+    def __init__(self, input_string, tpb):
+        self.input_string = input_string
+        self.__tpb = tpb  # ticks per beat
 
-    def __repr__(self):
-        return f"Event({self.code}, {self.args}, {self.kwargs}, {self._index}, {self._loop_playback_time})"
+        # parse and transform input string
+        raw_sequence = parse(input_string)
+        self.events = [SEvent(code, args, kwargs, i * self.__tpb) for i, (code, args, kwargs) in enumerate(raw_sequence)]
+
+    @property
+    def tpb(self):
+        return self.__tpb
+
+    @tpb.setter
+    def tpb(self, value):
+        self.__tpb = value
+        for i, event in enumerate(self.events):
+            event.time = i * self.__tpb
+
+    @property
+    def length(self):
+        return len(self.events) * self.__tpb
+
+    def print(self):
+        indent = "  "
+        print(f"Sequence: '{self.input_string}'")
+        for event in self.events:
+            time = str(event.play_time).rjust(5)
+            print(f"{indent}{time} - {event.code.ljust(2)} {event.args} {event.kwargs}")
 
 
 if __name__ == '__main__':
-    s = Sequence("ksk(10)ks ", 240)
-    s.print_events()
-    print()
-    s.calculate_playback_times(0)
-    s.print_events()
+    s = Sequence('kksshh(300)', 480)
+    s.print()
+    s.tpb = 120
+    s.print()
