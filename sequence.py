@@ -1,7 +1,7 @@
 from parser import parse
 
 
-class SEvent:
+class SequenceEvent:
     def __init__(self, code, args, kwargs, time):
         # How to play
         self.code = code
@@ -24,7 +24,10 @@ class Sequence:
 
         # parse and transform input string
         raw_sequence = parse(input_string)
-        self.events = [SEvent(code, args, kwargs, i * self.__tpb) for i, (code, args, kwargs) in enumerate(raw_sequence)]
+        self.events = [
+            SequenceEvent(code, args, kwargs, i * self.__tpb)
+            for i, (code, args, kwargs) in enumerate(raw_sequence)
+        ]
 
     @property
     def tpb(self):
