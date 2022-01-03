@@ -4,7 +4,7 @@ INSTRUCTIONS:
 - Run from 'app.py'.
 - Enter '/help' for tutorial
 - change the midi device by editing 'midi.py'
-- sequencer code mappings are in 'output.py' in the EventHandler class and above functions
+- sequencer code mappings are in 'events.py'
 
 ---
 
