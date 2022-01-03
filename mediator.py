@@ -27,11 +27,11 @@ class Mediator:
         # user cli commands
         self.add_cmd("help", self.cmd_help, "/help", "/h")
         self.add_cmd("quit", self.cmd_quit, "/quit")
-        self.add_cmd("start", self.cmd_start, "/go", "/g")
+        self.add_cmd("go", self.cmd_start, "/go", "/g")
         self.add_cmd("stop", self.cmd_stop, "/stop", "/s")
         self.add_cmd("pause", self.cmd_pause, "/pause", "/p")
         self.add_cmd("list", self.cmd_list_sequences, "/list", "/l")
-        self.add_cmd("delete-all", self.cmd_clear_sequences, "/delete-all", "/da")
+        self.add_cmd("clear", self.cmd_clear_sequences, "/clear", "/da")
         self.add_cmd("new_sequence", self.cmd_new_sequence, "/ns")
 
         # future commands

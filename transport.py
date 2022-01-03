@@ -1,6 +1,8 @@
 from time import monotonic
 
 
+# todo: use monotonic_ns() for better precision when converting to ticks?
+
 class Transport:
     def __init__(self, bpm=120, tpqn=480):
         self.bpm = bpm

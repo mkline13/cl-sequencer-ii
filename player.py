@@ -1,7 +1,8 @@
 from parser import parse, SeqParserError
 from sequence import Sequence
 from threading import Lock, Thread
-from output import EventHandler
+from events import sequencer_event_bindings
+from output import output_mappings
 
 playback_lock = Lock()
 
@@ -19,8 +20,14 @@ class Sequencer:
             message = [f"invalid sequence code: '{seq_code}'", f"reason: {str(e)}"]
             return success, message
 
-        sequence = Sequence(seq_code, parsed, tpb)
-        self.sequences.append(sequence)
+        # convert the parsed sequence into events
+        events = []
+        for i, (code, args, kwargs) in enumerate(parsed):
+            # todo: report errors when there is an unbound sequencer code
+            e = sequencer_event_bindings.get(code, '.')(code, args, kwargs, i * tpb)
+            events.append(e)
+
+        self.sequences.append(Sequence(seq_code, events, tpb))
 
         success = True
         message = [f"added new sequence: {seq_code}"]
@@ -44,7 +51,6 @@ class Player:
         # components
         self.sequencer = Sequencer()
         self.scheduler = Scheduler()
-        self.event_handler = EventHandler(self)
 
         # playback variables
         self.__running = False
@@ -112,9 +118,11 @@ class Player:
                 elif event.code in played:
                     continue
                 elif low < event.play_time or low - sequence.length < event.play_time <= high - sequence.length:
-                    # handle normal notes OR notes that occur when the loop cycles back to the beginning
-                    self.event_handler.dispatch(event)
-                    played.add(event.code) # mark the event code as played so duplicates are not played
+                    # get output handler
+                    handler = output_mappings[event.output]
+                    handler(self.scheduler, event)
+                    # mark the event code as played so duplicates are not played
+                    played.add(event.code)
 
         # TODO: trigger events in scheduler
 

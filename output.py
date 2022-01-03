@@ -1,11 +1,22 @@
 import midi
 import random
+from helpers import register
 
 
-def drum(scheduler, note, velocity, random_velocity, probability, channel):
-    velocity = int(velocity - random.randint(0, random_velocity))
-    channel = int(channel)
-    if random.random() <= probability:
+def midi_clamp(val):
+    return max(0, min(127, int(val)))
+
+
+output_mappings = {}
+
+
+@register('drum', output_mappings)
+def drum(scheduler, e):
+    note = midi_clamp(e.params['n'])
+    velocity = midi_clamp(e.params['v'] - random.randint(0, e.params['rv']))
+    channel = midi_clamp(e.params['c'])
+
+    if random.random() <= e.params['%']:
         midi.note_on(note, velocity, channel)
 
         # create the callback for the note off event in the scheduler
@@ -15,102 +26,9 @@ def drum(scheduler, note, velocity, random_velocity, probability, channel):
         # schedule the note off
 
 
-def rest(event, scheduler):
+@register('rest', output_mappings)
+def rest(scheduler, e):
     pass
 
 
-def kick(event, scheduler):
-    # defaults
-    params = {
-        "vel": 100,
-        "rvel": 0,
-        "prob": 1
-    }
 
-    # ordered args
-    for param_name, arg in zip(["vel", "rvel", "prob"], event.args):
-        params[param_name] = arg
-
-    # kwargs
-    params.update(event.kwargs)
-
-    # send output
-    drum(scheduler, 36, params["vel"], params["rvel"], params["prob"], 1)
-
-
-def snare(event, scheduler):
-    # defaults
-    params = {
-        "vel": 100,
-        "rvel": 0,
-        "prob": 1
-    }
-
-    # ordered args
-    for param_name, arg in zip(["vel", "rvel", "prob"], event.args):
-        params[param_name] = arg
-
-    # kwargs
-    params.update(event.kwargs)
-
-    # send output
-    drum(scheduler, 38, params["vel"], params["rvel"], params["prob"], 1)
-
-
-def hat(event, scheduler):
-    # defaults
-    params = {
-        "vel": 100,
-        "rvel": 0,
-        "prob": 1
-    }
-
-    # ordered args
-    for param_name, arg in zip(["vel", "rvel", "prob"], event.args):
-        params[param_name] = arg
-
-    # kwargs
-    params.update(event.kwargs)
-
-    # send output
-    drum(scheduler, 42, params["vel"], params["rvel"], params["prob"], 1)
-
-
-def block(event, scheduler):
-    # defaults
-    params = {
-        "vel": 100,
-        "rvel": 50,
-        "prob": 0.5
-    }
-
-    # ordered args
-    for param_name, arg in zip(["vel", "rvel", "prob"], event.args):
-        params[param_name] = arg
-
-    # kwargs
-    params.update(event.kwargs)
-
-    # send output
-    drum(scheduler, 37, params["vel"], params["rvel"], params["prob"], 1)
-
-
-def print_event(event, scheduler):
-    print("PLAYING:", event.code)
-
-
-class EventHandler:
-    def __init__(self, player):
-        self.player = player
-
-        self.mapping = {
-            "k": kick,
-            "b": block,
-            "s": snare,
-            "h": hat,
-            ".": rest,
-            "p": print_event
-        }
-
-    def dispatch(self, event):
-        self.mapping.get(event.code, rest)(event, self.player.scheduler)

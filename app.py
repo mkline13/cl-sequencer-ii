@@ -4,6 +4,8 @@ from player import Player
 from transport import Transport
 
 
+debug = False
+
 class App:
     def __init__(self):
         # instantiate all application parts
@@ -18,6 +20,10 @@ class App:
     def run(self):
         # launch cli repl
         self.cli.boot_message()
+
+        if debug:
+            self.mediator.command("new_sequence", ["ksks"])
+            self.mediator.command("go", [])
 
         quitting = 0
         while not quitting:

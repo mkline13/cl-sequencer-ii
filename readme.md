@@ -9,12 +9,9 @@ INSTRUCTIONS:
 ---
 
 TODO:
-- refactor event handling + command binding to use a decorator syntax for general hotness
-- refactor the Event handling to be simpler and more fun
-- implement more user commands for fun and profit
+- fix parser, multiple kwargs don't work. Rebuild parser with new error handling system, go back to functional style
 - rethink error handling
-- rebuild parser with new error handling system, go back to functional style
-- add config file for setting up midi / bindings
+- implement more user commands for fun and profit
 
 DONE:
 - mvp complete: I have a fully functional sequencer that can be easily extended

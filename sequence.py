@@ -17,13 +17,10 @@ class SequenceEvent:
 
 
 class Sequence:
-    def __init__(self, input_string, parsed_events, tpb):
+    def __init__(self, input_string, events, tpb):
         self.input_string = input_string
         self.__tpb = tpb  # ticks per beat
-        self.events = [
-            SequenceEvent(code, args, kwargs, i * self.__tpb)
-            for i, (code, args, kwargs) in enumerate(parsed_events)
-        ]
+        self.events = events
 
     @property
     def tpb(self):
