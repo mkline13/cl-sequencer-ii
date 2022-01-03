@@ -99,8 +99,10 @@ def print_event(event, scheduler):
     print("PLAYING:", event.code)
 
 
-class EventDispatch:
-    def __init__(self):
+class EventHandler:
+    def __init__(self, player):
+        self.player = player
+
         self.mapping = {
             "k": kick,
             "b": block,
@@ -110,5 +112,5 @@ class EventDispatch:
             "p": print_event
         }
 
-    def dispatch(self, event, scheduler):
-        self.mapping.get(event.code, rest)(event, scheduler)
+    def dispatch(self, event):
+        self.mapping.get(event.code, rest)(event, self.player.scheduler)

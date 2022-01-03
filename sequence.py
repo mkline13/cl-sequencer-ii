@@ -1,4 +1,3 @@
-from parser import parse
 
 
 class SequenceEvent:
@@ -18,15 +17,12 @@ class SequenceEvent:
 
 
 class Sequence:
-    def __init__(self, input_string, tpb):
+    def __init__(self, input_string, parsed_events, tpb):
         self.input_string = input_string
         self.__tpb = tpb  # ticks per beat
-
-        # parse and transform input string
-        raw_sequence = parse(input_string)
         self.events = [
             SequenceEvent(code, args, kwargs, i * self.__tpb)
-            for i, (code, args, kwargs) in enumerate(raw_sequence)
+            for i, (code, args, kwargs) in enumerate(parsed_events)
         ]
 
     @property

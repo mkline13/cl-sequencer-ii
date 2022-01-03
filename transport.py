@@ -10,13 +10,20 @@ class Transport:
         self.__start_time_s = 0
         self.__elapsed_time_s = 0
 
+    def goto(self, time_s):
+        self.__elapsed_time_s = time_s
+        self.__start_time_s = time_s
+
     def start(self):
+        tmp = self.__elapsed_time_s
         self.__start_time_s = monotonic()
         self.__running = True
+        return tmp
 
     def stop(self):
         self.__elapsed_time_s += monotonic() - self.__start_time_s
         self.__running = False
+        return self.__elapsed_time_s
 
     def get_elapsed_ticks(self):
         return self.convert_seconds_to_ticks(self.get_elapsed_s())

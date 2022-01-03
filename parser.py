@@ -5,6 +5,15 @@ DIGITS_ALL = '1234567890'
 DIGITS_NONZERO = '123456789'
 
 
+class SeqParserError(Exception):
+    pass
+
+
+# Todo: rewrite parser to use functional form with the following return values: err, [parsed, values], 'remaining'
+# and get rid of Python Exception handling for parser errors
+# hopefully this will improve the quality of the error messages
+
+
 class ParserString:
     def __init__(self, input_string):
         self._input_string = input_string
@@ -60,7 +69,7 @@ def parse_number(inp):
         if out == '':
             return None
         else:
-            raise SyntaxError(f"Invalid first digit: {inp.remaining}")
+            raise SeqParserError(f"Invalid first digit: {inp.remaining}")
 
     elif first_digit == '0':
         point = parse_char(inp, '.')
@@ -71,7 +80,7 @@ def parse_number(inp):
             # parse digits after '.'
             out += parse_chars(inp, DIGITS_ALL)
         else:
-            raise SyntaxError(f"Leading zeros not allowed: {out + inp.remaining}")
+            raise SeqParserError(f"Leading zeros not allowed: {out + inp.remaining}")
 
     else: # if first digit is 1-9
         # parse other digits before '.'
@@ -128,12 +137,12 @@ def parse_kwarg(inp):
     colon = parse_char(inp, ':')
 
     if not colon:
-        raise SyntaxError(f"Kwargs must have ':' :{inp.remaining}")
+        raise SeqParserError(f"Invalid keyword argument '{key}', requires a colon. Remaining: '{inp.remaining}'")
 
     value = parse_number(inp)
 
     if not value:
-        raise SyntaxError(f"Kwargs must have a value after the ':' :{inp.remaining}")
+        raise SeqParserError(f"Invalid keyword argument '{key}', no value following the colon. Remaining: '{inp.remaining}'")
 
     return key, value
 
@@ -157,7 +166,7 @@ def parse_parameters(inp):
         if close_paren:
             return args, kwargs
         else:
-            raise SyntaxError(f"Unclosed parameters! {inp.remaining}")
+            raise SeqParserError(f"Parenthesis not closed. Remaining: '{inp.remaining}'")
     else:
         return args, kwargs
 
@@ -171,7 +180,7 @@ def parse_event(inp):
     if code == '<END>':
         return None
     elif code == '':
-        raise SyntaxError(f"Invalid event code: {inp.remaining}")
+        raise SeqParserError(f"Invalid event code: '{inp.remaining}'")
 
     args, kwargs = parse_parameters(inp)
 

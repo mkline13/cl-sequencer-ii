@@ -1,7 +1,3 @@
-from unittest import TestCase
-from parser import *
-
-
 def test_parse_sequence():
     ps = ParserString("x(55, cat:-22.3)kskks(-9)")
     print(f"input:               '{ps.input_string}'")
