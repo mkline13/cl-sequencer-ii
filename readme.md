@@ -1,13 +1,20 @@
-Sequencer works!
+IT"S ALIVE!!!
 
-Run from 'player.py' and edit the sequences in the 'if __main__' section.
+INSTRUCTIONS:
+- Run from 'app.py'.
+- Enter '/help' for tutorial
+- change the midi device by editing 'midi.py'
+- sequencer code mappings are in 'output.py' in the EventHandler class and above functions
 
+---
 
 TODO:
+- refactor event handling + command binding to use a decorator syntax for general hotness
 - refactor the Event handling to be simpler and more fun
 - implement more user commands for fun and profit
 - rethink error handling
 - rebuild parser with new error handling system, go back to functional style
+- add config file for setting up midi / bindings
 
 DONE:
 - mvp complete: I have a fully functional sequencer that can be easily extended
