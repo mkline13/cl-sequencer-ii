@@ -36,11 +36,10 @@ class CLI:
             return 0
         elif user_input[0][0] == "/":
             # if commands are NOT sequence codes
-            # '/' indicates the command comes from the user
-            cmd, args = user_input[0], user_input[1:]
+            cmd, cmd_args = user_input[0], user_input[1:]
 
             # send command to mediator
-            success, message = self.mediator.cli_command(cmd, args)
+            success, message = self.mediator.command(cmd, cmd_args)
 
             # handle quitting
             if cmd == "/quit":
@@ -48,7 +47,7 @@ class CLI:
                 return 1
         else:
             # handle sequence codes
-            success, message = self.mediator.command("new_sequence", user_input)
+            success, message = self.mediator.cmd_new_sequence("", user_input)
 
         if success:
             self.print_message(message)

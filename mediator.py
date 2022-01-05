@@ -1,40 +1,38 @@
-from threading import Lock, Thread
 
-mediator_lock = Lock()
-
-
-class Cmd:
-    def __init__(self, command_name, cli_bindings, callback):
-        self.command_name = command_name
-        self.cli_bindings = cli_bindings
-        self.callback = callback
+def add_bindings(*bindings):
+    """
+    A decorator function that associates functions with strings that will be used as commands in the cli.
+    """
+    def decorator(func):
+        func.cmd_bindings = bindings
+        return func
+    return decorator
 
 
 class Mediator:
     def __init__(self, app):
         self.app = app
 
-        # mapping of command names -> callback funcs
         self.commands = {}
-
-        # mapping of cli commands -> callback funcs
-        self.bindings = {}
-
-        # command list for /help command
         self.help_list = []
 
-        # This is the list of commands that will be available during runtime
-        # user cli commands
-        self.add_cmd("help", self.cmd_help, "/help", "/h")
-        self.add_cmd("quit", self.cmd_quit, "/quit")
-        self.add_cmd("go", self.cmd_start, "/go", "/g", "/start")
-        self.add_cmd("stop", self.cmd_stop, "/stop", "/s")
-        self.add_cmd("pause", self.cmd_pause, "/pause", "/p")
-        self.add_cmd("list", self.cmd_list_sequences, "/list", "/l")
-        self.add_cmd("clear", self.cmd_clear_sequences, "/clear", "/da")
-        self.add_cmd("new_sequence", self.cmd_new_sequence, "/ns")
+        # search for commands bound with '@add_binding' and add to the command dict and help list
+        for name in dir(Mediator):
+            member = getattr(Mediator, name)
+            if hasattr(member, 'cmd_bindings'):
+                # variable renamed for clarity
+                func = member
+                # add to the commands dict
+                for b in func.cmd_bindings:
+                    self.commands[b] = func
+                # add to the help list
+                col1 = ', '.join(func.cmd_bindings)
+                col2 = str(func.__doc__).strip()
+                entry = (col1, col2)
+                self.help_list.append(entry)
 
         # future commands
+        """
         self.add_cmd("subdivision", self.cmd_stub, "/subdiv", "/div")  # default subdivision for new sequences
         self.add_cmd("store", self.cmd_stub, "/store", "/s")  # stores seq in quick store '/s' OR in slots [0-x] '/s 3 4'
         self.add_cmd("recall", self.cmd_stub, "/recall", "/r")  # recalls seq in quick store '/r' OR in slot [0-x] '/r 3'
@@ -43,57 +41,36 @@ class Mediator:
         self.add_cmd("mute", self.cmd_stub, "/mute", "/m")  # mute all tracks '/mute' OR specific tracks '/mute 0 2'
         self.add_cmd("unmute", self.cmd_stub, "/unmute", "/um")  # unmute all tracks '/um' OR specific tracks '/um 3 4'
         self.add_cmd("toggle-mutes", self.cmd_stub, "/tmute", "/tm")  # toggle the mutes of all OR specific tracks
-
         # idea: quick mode
         # user can enter mode in which they can issue commands without typing '/'
         # good for dj-style control of sequencer
         self.add_cmd("quick-mode", self.cmd_stub, "/quick")
-
-    def add_cmd(self, cmd_name, callback, *cli_bindings):
-        # add command
-        self.commands[cmd_name] = callback
-
-        if cli_bindings:
-            # add bindings
-            for i in cli_bindings:
-                self.bindings[i] = callback
-
-            # add /help entry
-            col1 = ', '.join(cli_bindings)
-            col2 = str(callback.__doc__).strip()
-            entry = (col1, col2)
-            self.help_list.append(entry)
-
-    def cli_command(self, cmd, args):
-        success, message = self.bindings.get(cmd, self.cmd_no)(cmd, args)
-        return success, message
-
-    def command(self, cmd, args):
-        success, message = self.commands.get(cmd, self.cmd_no)(cmd, args)
-        return success, message
-
-    def cmd_no(self, cmd, args):
-        success = False
-        message = [f"command '{cmd}' does not exist.  args: {args}"]
-        return success, message
-
-    def cmd_stub(self, cmd, args):
         """
-        command stub that will be implemented later
-        """
-        success = False
-        message = [f"command '{cmd}' not implemented yet.  args: {args}"]
-        return success, message
 
-    def cmd_quit(self, cmd, args):
+    def command(self, cmd, cmd_args):
+        if cmd in self.commands:
+            func = self.commands[cmd]
+            success, message = func(self, cmd, cmd_args)
+            return success, message
+        else:
+            success, message = self.cmd_nonexistent(cmd, cmd_args)
+            return success, message
+
+    def cmd_nonexistent(self, cmd, cmd_args):
+        """
+        called when a command doesn't exist
+        """
+        return False, [f"command '{cmd}' does not exist."]
+
+    @add_bindings('/quit')
+    def cmd_quit(self, cmd, cmd_args):
         """
         quit the program
         """
-        success = True
-        message = ["quitting..."]
-        return success, message
+        return True, ["quitting..."]
 
-    def cmd_help(self, cmd, args):
+    @add_bindings('/h', '/help')
+    def cmd_help(self, cmd, cmd_args):
         """
         get list of all available commands
         """
@@ -110,38 +87,38 @@ class Mediator:
         message.append(f"  3. type in 'h' to add another sequence")
         message.append(f"  4. enjoy your creation :)")
 
-        success = True
-        return success, message
+        return True, message
 
-    def cmd_new_sequence(self, cmd, args):
-        # TODO: use args for changing the subdivision for the particular sequence (division of tpqn)
+    def cmd_new_sequence(self, cmd, cmd_args):
+        # TODO: use cmd_args for changing the subdivision for the particular sequence (division of tpqn)
         # format sequencer code
-        seq_code = args[0]
+        seq_code = cmd_args[0]
         # send to the sequencer
-        success, message = self.app.player.sequencer.new_sequence(seq_code)
+        success, message = self.app.player.sequence_manager.new_sequence(seq_code)
         return success, message
 
-    def cmd_list_sequences(self, cmd, args):
+    @add_bindings('/ls')
+    def cmd_list_sequences(self, cmd, cmd_args):
         """
         list all sequences
         """
-        sequence_list = [f"{i}: '{s}'" for i, s in enumerate(self.app.player.sequencer.get_sequence_list())]
+        sequence_list = [f"{i}: '{s}'" for i, s in enumerate(self.app.player.sequence_manager.get_sequence_list())]
         if sequence_list:
             message = [f"sequences: {len(sequence_list)}"] + sequence_list
         else:
             message = ["sequences: <empty>"]
+        return True, message
 
-        success = True
-        return success, message
-
-    def cmd_clear_sequences(self, cmd, args):
+    @add_bindings('/clear')
+    def cmd_clear_sequences(self, cmd, cmd_args):
         """
         clear all sequences
         """
-        self.app.player.sequencer.sequences.clear()
+        self.app.player.sequence_manager.sequences.clear()
         return True, ["cleared all sequences"]
 
-    def cmd_start(self, cmd, args):
+    @add_bindings('/start', '/go', '/g')
+    def cmd_start(self, cmd, cmd_args):
         """
         start playback
         """
@@ -153,7 +130,8 @@ class Mediator:
             message = ["cannot start, already playing"]
         return success, message
 
-    def cmd_stop(self, cmd, args):
+    @add_bindings('/stop', '/s')
+    def cmd_stop(self, cmd, cmd_args):
         """
         stop playback and rewind
         """
@@ -161,12 +139,13 @@ class Mediator:
         self.app.transport.goto(0)
 
         if success:
-            message = [f"stopped at {round(stop_time, 2)}s and returned playhead to beginning"]
+            message = [f"stopped at {round(stop_time, 2)}s and returned playhead to start"]
         else:
             message = [f"cannot stop, player is not running"]
         return success, message
 
-    def cmd_pause(self, cmd, args):
+    @add_bindings('/pause')
+    def cmd_pause(self, cmd, cmd_args):
         """
         pause playback
         """

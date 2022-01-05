@@ -4,10 +4,8 @@ from threading import Lock, Thread
 from events import sequencer_event_bindings
 from output import output_mappings
 
-playback_lock = Lock()
 
-
-class Sequencer:
+class SequenceManager:
     def __init__(self):
         self.sequences = []
 
@@ -49,16 +47,17 @@ class Player:
         self.transport = transport
 
         # components
-        self.sequencer = Sequencer()
+        self.sequence_manager = SequenceManager()
         self.scheduler = Scheduler()
 
         # playback variables
         self.__running = False
         self.__previous_time = 0
         self.__playback_thread = None
+        self.__lock = Lock()
 
     def start(self):
-        with playback_lock:
+        with self.__lock:
             running = self.__running
 
         if not running:
@@ -71,31 +70,25 @@ class Player:
             return False, None
 
     def stop(self):
-        with playback_lock:
-            running = self.__running
-
-        if running:
-            with playback_lock:
+        with self.__lock:
+            if self.__running:
                 self.__running = False
-            self.__playback_thread.join()
-            success = True
-            stop_time = self.transport.get_elapsed_s()
-        else:
-            success = False
-            stop_time = None
+            else:
+                return False, None
 
-        return success, stop_time
+        self.__playback_thread.join()  # not in lock to prevent deadlock (?)
+        return True, self.transport.get_elapsed_s()
 
     def playback_loop(self):
-        with playback_lock:
+        with self.__lock:
             self.__running = True
             self.transport.start()
 
         while self.__running:
-            with playback_lock:
+            with self.__lock:
                 self.step()
 
-        with playback_lock:
+        with self.__lock:
             self.transport.stop()
 
     def step(self):
@@ -104,7 +97,7 @@ class Player:
         played = set()  # store a set of played event codes so that duplicate notes are not played
 
         # trigger events contained in sequence
-        for sequence in self.sequencer.sequences:
+        for sequence in self.sequence_manager.sequences:
             # uses a 1D collision algorithm to determine if notes should be played
             # calculate event collision range
             collision_interval = current_time - self.__previous_time
