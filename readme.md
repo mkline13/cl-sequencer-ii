@@ -15,7 +15,6 @@ DONE:
 - mvp complete: I have a fully functional sequencer that can be easily extended
 
 FOR THE FUTURE:
-- maybe get rid of keyword args? Maybe not, they are good for things like probability '%22'
 - change syntax for ergonomics?
   - maybe use spaces like this: 'k(n32 v22 %11)' 's(11 v33)'
   - maybe use square brackets? 'k[22 @45 %66]s[11]b[%1]'
