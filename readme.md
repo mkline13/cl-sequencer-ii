@@ -9,8 +9,6 @@ INSTRUCTIONS:
 ---
 
 TODO:
-- fix parser, multiple kwargs don't work. Rebuild parser with new error handling system, go back to functional style
-- rethink error handling
 - implement more user commands for fun and profit
 
 DONE:
@@ -19,8 +17,7 @@ DONE:
 FOR THE FUTURE:
 - maybe get rid of keyword args? Maybe not, they are good for things like probability '%22'
 - change syntax for ergonomics?
-  - make kwargs look like this: '%22', 'v100', 'n32' rather than with a colon
-  - maybe make events like this: 'k(n32 v22 %11)' 's(11 v33)'
+  - maybe use spaces like this: 'k(n32 v22 %11)' 's(11 v33)'
   - maybe use square brackets? 'k[22 @45 %66]s[11]b[%1]'
 - figure out how to do fancy things in command line like inserting both parens with the open paren (like in a text editor)
 - user-configurable event codes

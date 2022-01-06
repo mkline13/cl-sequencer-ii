@@ -1,4 +1,4 @@
-from parser import parse, SeqParserError
+from parser import parse
 from sequence import Sequence
 from threading import Lock, Thread
 from events import sequencer_event_bindings
@@ -11,18 +11,21 @@ class SequenceManager:
 
     def new_sequence(self, seq_code, tpb=280):
         # try to parse the sequence
-        try:
-            parsed = parse(seq_code)
-        except SeqParserError as e:
+        trace, result, remaining = parse(seq_code)
+
+        if not result:
+            trace_lines = [line.render() for line in trace]
             success = False
-            message = [f"invalid sequence code: '{seq_code}'", f"reason: {str(e)}"]
+            message = [f"invalid sequence code: '{seq_code}', traceback:"] + trace_lines
             return success, message
 
         # convert the parsed sequence into events
         events = []
-        for i, (code, args, kwargs) in enumerate(parsed):
+        for i, (code, oargs, largs) in enumerate(result):
             # todo: report errors when there is an unbound sequencer code
-            e = sequencer_event_bindings.get(code, '.')(code, args, kwargs, i * tpb)
+            # note: oargs = ordered event args
+            # note: largs = labelled event args
+            e = sequencer_event_bindings.get(code, '.')(code, oargs, largs, i * tpb)
             events.append(e)
 
         self.sequences.append(Sequence(seq_code, events, tpb))
@@ -112,8 +115,8 @@ class Player:
                     continue
                 elif low < event.play_time or low - sequence.length < event.play_time <= high - sequence.length:
                     # get output handler
-                    handler = output_mappings[event.output]
-                    handler(self.scheduler, event)
+                    handler = output_mappings[event.destination]
+                    handler(self.scheduler, **event.payload)
                     # mark the event code as played so duplicates are not played
                     played.add(event.code)
 

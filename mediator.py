@@ -86,6 +86,8 @@ class Mediator:
         message.append(f"  2. type in '/start' to begin playback")
         message.append(f"  3. type in 'h' to add another sequence")
         message.append(f"  4. enjoy your creation :)")
+        message.append(f"  5. parameters can be added to events like this: 'ks(~v100)k(%0.6)s(n50)'")
+        message.append(f"  6. TODO: add a way for the user to query usable parameters") #TODO
 
         return True, message
 

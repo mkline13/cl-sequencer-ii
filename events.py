@@ -2,10 +2,10 @@ from helpers import register
 
 
 class Event:
-    def __init__(self, code, output, params, time):
+    def __init__(self, code, destination, payload, time):
         self.code = code
-        self.output = output
-        self.params = params
+        self.destination = destination
+        self.payload = payload
 
         self.time = time
         self.offset = 0
@@ -15,23 +15,23 @@ class Event:
         return self.time + self.offset
 
 
-def create_event(default_params, output, code, args, kwargs, time):
+def create_event(default_params, output, code, oargs, largs, time):
     params = {}
 
     # fill in defaults as well as args
     for i, (k, v) in enumerate(default_params):
-        if i < len(args):
+        if i < len(oargs):
             expected_type = type(v)
             if expected_type is int:
-                user_val = int(args[i])
+                user_val = int(oargs[i])
             elif expected_type is float:
-                user_val = float(args[i])
+                user_val = float(oargs[i])
             params[k] = user_val
         else:
             params[k] = v
 
     # fill in kwargs
-    for k, v in kwargs.items():
+    for k, v in largs.items():
         if k in params:
             params[k] = v
 
@@ -49,12 +49,12 @@ def rest(code, args, kwargs, time):
 @register('k', sequencer_event_bindings)
 def kick(code, args, kwargs, time):
     defaults = [
-        ('n', 36),    # midi note number
-        ('v', 127),   # velocity
-        ('c', 1),     # channel
-        ('%', 1.0),   # probability
-        ('rv', 0.0),  # random velocity
-        ('l', 10),    # note length (ticks)
+        ('note', 36),    # midi note number
+        ('vel', 127),   # velocity
+        ('chan', 1),     # channel
+        ('prob', 1.0),   # probability
+        ('rand_vel', 0.0),  # random velocity
+        ('length', 10),    # note length (ticks)
     ]
     return create_event(defaults, "drum", code, args, kwargs, time)
 
@@ -62,12 +62,12 @@ def kick(code, args, kwargs, time):
 @register('s', sequencer_event_bindings)
 def snare(code, args, kwargs, time):
     defaults = [
-        ('n', 38),    # midi note number
-        ('v', 127),   # velocity
-        ('c', 1),     # channel
-        ('%', 1.0),   # probability
-        ('rv', 0.0),  # random velocity
-        ('l', 10),    # note length (ticks)
+        ('note', 38),    # midi note number
+        ('vel', 127),   # velocity
+        ('chan', 1),     # channel
+        ('prob', 1.0),   # probability
+        ('rand_vel', 0.0),  # random velocity
+        ('length', 10),    # note length (ticks)
     ]
     return create_event(defaults, "drum", code, args, kwargs, time)
 
@@ -75,12 +75,12 @@ def snare(code, args, kwargs, time):
 @register('h', sequencer_event_bindings)
 def hihat(code, args, kwargs, time):
     defaults = [
-        ('n', 42),    # midi note number
-        ('v', 127),   # velocity
-        ('c', 1),     # channel
-        ('%', 1.0),   # probability
-        ('rv', 0.0),  # random velocity
-        ('l', 10),    # note length (ticks)
+        ('note', 42),    # midi note number
+        ('vel', 127),   # velocity
+        ('chan', 1),     # channel
+        ('prob', 1.0),   # probability
+        ('rand_vel', 0.0),  # random velocity
+        ('length', 10),    # note length (ticks)
     ]
     return create_event(defaults, "drum", code, args, kwargs, time)
 

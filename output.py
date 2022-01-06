@@ -11,17 +11,17 @@ output_mappings = {}
 
 
 @register('drum', output_mappings)
-def drum(scheduler, e):
-    note = midi_clamp(e.params['n'])
-    velocity = midi_clamp(e.params['v'] - random.randint(0, e.params['rv']))
-    channel = midi_clamp(e.params['c'])
+def drum(scheduler, note=32, vel=127, chan=1, rand_vel=0, prob=1.0, length=100):
+    note = midi_clamp(note)
+    vel = midi_clamp(vel - random.randint(0, rand_vel))
+    chan = midi_clamp(chan)
 
-    if random.random() <= e.params['%']:
-        midi.note_on(note, velocity, channel)
+    if random.random() <= prob:
+        midi.note_on(note, vel, chan)
 
         # create the callback for the note off event in the scheduler
         def note_off_callback():
-            midi.note_off(note, channel)
+            midi.note_off(note, chan)
 
         # schedule the note off
 
