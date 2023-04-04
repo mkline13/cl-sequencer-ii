@@ -1,5 +1,3 @@
-IT"S ALIVE!!!
-
 INSTRUCTIONS:
 - Run from 'app.py'.
 - Enter '/help' for tutorial
