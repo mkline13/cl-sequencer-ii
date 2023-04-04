@@ -1,4 +1,8 @@
-INSTRUCTIONS:
+# cl-sequencer-ii
+
+A midi sequencer with a command-line interface. Implements a custom language for defining musical sequences.
+
+## Instructions:
 - Run from 'app.py'.
 - Enter '/help' for tutorial
 - change the midi device by editing 'midi.py'
@@ -6,14 +10,14 @@ INSTRUCTIONS:
 
 ---
 
-TODO:
+## Current status:
+- mvp complete: I have a fully functional sequencer that can be easily extended
+
+## Todo:
 - implement note-offs with the scheduler
 - implement more user commands for fun and profit
 
-DONE:
-- mvp complete: I have a fully functional sequencer that can be easily extended
-
-FOR THE FUTURE:
+## Future ideas:
 - implement cool note-generation event handlers using the scheduler (flurry, arpeggio, etc)
 - change syntax for ergonomics?
   - maybe use spaces like this: 'k(n32 v22 %11)' 's(11 v33)'
