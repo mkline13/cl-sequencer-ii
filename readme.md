@@ -8,8 +8,6 @@ A midi sequencer with a command-line interface. Implements a custom language for
 - change the midi device by editing 'midi.py'
 - sequencer code mappings are in 'events.py'
 
----
-
 ## Project status:
 - mvp complete: I have a fully functional sequencer that can be easily extended
 
