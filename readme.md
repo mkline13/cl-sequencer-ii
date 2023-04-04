@@ -10,7 +10,7 @@ A midi sequencer with a command-line interface. Implements a custom language for
 
 ---
 
-## Current status:
+## Project status:
 - mvp complete: I have a fully functional sequencer that can be easily extended
 
 ## Todo:
